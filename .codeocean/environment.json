@@ -1,0 +1,96 @@
+{
+	"version": 1,
+	"base_image": "codeocean/mambaforge3:23.1.0-4-python3.10.12-ubuntu22.04",
+	"options": {
+		"registry_host_arg": true,
+		"git_ask_pass": true
+	},
+	"installers": {
+		"apt": {
+			"packages": [
+				{
+					"name": "build-essential",
+					"version": "12.9ubuntu3"
+				}
+			],
+			"install_software_properties_common": true
+		},
+		"pip": {
+			"packages": [
+				{
+					"name": "aind-data-schema",
+					"version": "0.37.3"
+				},
+				{
+					"name": "cython",
+					"version": "3.0.11"
+				},
+				{
+					"name": "dateparser",
+					"version": "1.2.0"
+				},
+				{
+					"name": "git+https://github.com/calebshibu/suite2p.git#egg=suite2p",
+					"version": "c88e1ba3aa2013fe379e64c7e45ae73a417eb4a7"
+				},
+				{
+					"name": "jnormcorre",
+					"version": "1.0.0"
+				},
+				{
+					"name": "matplotlib",
+					"version": "3.9.0"
+				},
+				{
+					"name": "opencv-python-headless",
+					"version": "4.9.0.80"
+				},
+				{
+					"name": "scanimage-tiff-reader",
+					"version": "1.4.1.4"
+				},
+				{
+					"name": "scikit-image",
+					"version": "0.23.2"
+				},
+				{
+					"name": "scipy",
+					"version": "1.14.1"
+				},
+				{
+					"name": "tenacity",
+					"version": "8.3.0"
+				},
+				{
+					"name": "tifffile",
+					"version": "2024.9.20"
+				}
+			],
+			"options": {},
+			"pre_install_options": {}
+		},
+		"vscode": {
+			"packages": [
+				{
+					"name": "REditorSupport.R"
+				},
+				{
+					"name": "continue.continue"
+				},
+				{
+					"name": "ms-python.python"
+				},
+				{
+					"name": "ms-toolsai.jupyter"
+				},
+				{
+					"name": "reageyao.bioSyntax"
+				},
+				{
+					"name": "saoudrizwan.claude-dev"
+				}
+			],
+			"version": "4.95.3"
+		}
+	}
+}
