@@ -1,5 +1,72 @@
 #!/usr/bin/env bash
 set -ex
 
-# This is the master script for the capsule. When you click "Reproducible Run", the code in this file will execute.
-python -u run_capsule.py "$@"
+
+# Get all subdirectories
+subdirs=$(find ../data/iGluSnFR_simulations_default_12_registered9/ -maxdepth 1 -mindepth 1 -type d | sort)
+
+# Output directory for results
+output_dir="../results/"
+
+# Base command
+base_command="python -u run_capsule.py"
+
+# Counter for test directories and SimDescription
+counter=1
+
+# Maximum number of parallel processes
+max_parallel=8 # Adjust based on your system's capabilities
+
+# Function to run a command without modifying the CSV
+run_command() {
+  local input_dir=$1
+  local output_path="${output_dir}"
+  
+  # Create the output directory if it doesn't exist
+  mkdir -p "$output_path"
+  
+  # Construct the full command
+  local full_command="$base_command -i $input_dir -o $output_path"
+  
+  # Retry logic
+  local max_retries=5 
+  local attempt=0
+  local success=0
+  
+  while [ $attempt -lt $max_retries ]; do
+    attempt=$((attempt + 1))
+    echo "Attempt $attempt: Running: $full_command"
+    
+    # Run the command
+    eval "$full_command" && success=1 && break
+    
+    if [ $? -ne 0 ]; then
+      echo "Attempt $attempt failed. Retrying..."
+      sleep 1  # Optional: wait before retrying
+    fi
+  done
+  
+  if [ $success -eq 0 ]; then
+    echo "Command failed after $max_retries attempts."
+    exit 1
+  fi
+}
+
+# Loop through all combinations and execute commands in parallel
+for subdir in $subdirs; do
+    run_command "$subdir" &
+
+    # Increment the counter
+    counter=$((counter + 1))
+
+    # Control parallel processes
+    while [ "$(jobs -r | wc -l)" -ge "$max_parallel" ]; do
+        wait -n
+    done
+
+    # Small delay to maintain order (optional)
+    sleep 0.05
+done
+
+# Wait for all background processes to complete
+wait
