@@ -112,34 +112,34 @@ def compute_euclidean_norm(data_dict):
     return result_dict
 
 def compute_percentiles(combined_motion_dict):
-    # Initialize dictionaries to store results
-    top_5_values_dict = {}
-    top_5_indices_dict = {}
+    # Initialize a dictionary to store unique indices
+    unique_indices_dict = {}
     
     # Process each folder
     for folder_index, motion_total in combined_motion_dict.items():
         # Compute the 95th percentile
         top_5_percentile = np.percentile(motion_total, 95)
         
-        # Extract values above or equal to the 95th percentile
-        top_5_values = motion_total[motion_total >= top_5_percentile]
-        
         # Extract indices of values above or equal to the 95th percentile
-        top_5_indices = np.argwhere(motion_total >= top_5_percentile)
+        top_5_indices = np.argwhere(motion_total >= top_5_percentile).flatten()
         
-        # Store results in dictionaries
-        top_5_values_dict[folder_index] = top_5_values
-        top_5_indices_dict[folder_index] = top_5_indices
+        # Compute unique indices
+        unique_indices = np.unique(top_5_indices)
+        
+        # Store unique indices in the dictionary
+        unique_indices_dict[folder_index] = unique_indices.tolist()  # Convert to list for readability
             
-    return top_5_indices_dict
+    return unique_indices_dict
 
 def process_folder(data_dir, folder_name, file_extension):
     folder_path = os.path.join(data_dir, folder_name)
     if os.path.isdir(folder_path):
-        tiff_dict, aData_dict = read_tiff_h5_aData(folder_path, file_extension)
-        motion_total_dict = compute_euclidean_norm(aData_dict)
-        top_5_indices_dict = compute_percentiles(motion_total_dict)
-        print(f'Done {folder_name}', top_5_indices_dict)
+        tiff_dict, aData_dict = read_tiff_h5_aData(folder_path, file_extension) # 1. Extract tiff and alignment data (motionC and motionR)
+        motion_total_dict = compute_euclidean_norm(aData_dict) #2. Combine motionC and motionR by  normalized Euclidean norm by computing the magnitude of a vector with the two components
+        top_5_indices_dict = compute_percentiles(motion_total_dict) #3. Get the top 5% with the highest motion
+        
+        print(f'Done {folder_name}')
+        return top_5_indices_dict
 
 
 def run(data_dir, output_path):
@@ -156,41 +156,22 @@ def run(data_dir, output_path):
     'stripRegisteration': 'h5'
     }
 
-
     # Use glob to find directories matching the names
     found_folders = [os.path.basename(x) for x in glob.glob(os.path.join(data_dir, '*')) if os.path.isdir(x)]
-    print(found_folders)
+
+    methods_indices = {}
+    key_counter = 1
     for folder, ext in folder_names.items():
         if folder in found_folders:
-            process_folder(data_dir, folder, ext)
+           methods_indices[key_counter] = process_folder(data_dir, folder, ext)
+           key_counter += 1
+
+    # TODO: concatenate all methods_indices
+    # TODO: get unique indices as list accross all registeration methods 
+    # TODO: Keep track of the movies as well
+    
+    print('methods_indices', methods_indices.keys())
             
-
-    # if 'suite2p' in data_dir:
-    #     tiff_dict_suite2p, aData_dict_suite2p = read_tiff_h5_aData(data_dir, 'h5')
-    #     motion_total_suite2p_dict = compute_euclidean_norm(aData_dict_suite2p)
-    #     top_5_indices_dict_suite2p = compute_percentiles(motion_total_suite2p_dict)
-    #     print('Done suite2p')
-
-    # if 'caiman_stripCaiman' in data_dir:
-    #     tiff_dict_caiman, aData_dict_caiman = read_tiff_h5_aData(data_dir, 'h5')
-    #     motion_total_caiman_dict = compute_euclidean_norm(aData_dict_caiman)
-    #     top_5_indices_dict_caiman = compute_percentiles(motion_total_caiman_dict)
-    #     print('Done caiman')
-
-    # if 'stripRegisteration_matlab' in data_dir:
-    #     tiff_dict_strip_matlab, aData_dict_strip_matlab = read_tiff_h5_aData(data_dir, 'mat')
-    #     motion_total_strip_matlab_dict = compute_euclidean_norm(aData_dict_strip_matlab)
-    #     top_5_indices_dict_strip_matlab = compute_percentiles(motion_total_strip_matlab_dict)
-    #     print('Done matlab')
-
-    # if 'stripRegisteration' in data_dir:
-    #     tiff_dict_strip, aData_dict_strip = read_tiff_h5_aData(data_dir, 'h5')
-    #     motion_total_strip_dict = compute_euclidean_norm(aData_dict_strip)
-    #     top_5_indices_dict_strip = compute_percentiles(motion_total_strip_dict)
-    #     print('Done StripRegisteration')
-
-
-
 
 if __name__ == "__main__":
     # Create argument parser
