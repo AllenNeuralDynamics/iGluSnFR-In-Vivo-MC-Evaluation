@@ -1,6 +1,7 @@
 import os
 import argparse
 import json
+import glob
 import numpy as np
 import h5py
 import pandas as pd
@@ -132,6 +133,15 @@ def compute_percentiles(combined_motion_dict):
             
     return top_5_indices_dict
 
+def process_folder(data_dir, folder_name, file_extension):
+    folder_path = os.path.join(data_dir, folder_name)
+    if os.path.isdir(folder_path):
+        tiff_dict, aData_dict = read_tiff_h5_aData(folder_path, file_extension)
+        motion_total_dict = compute_euclidean_norm(aData_dict)
+        top_5_indices_dict = compute_percentiles(motion_total_dict)
+        print(f'Done {folder_name}', top_5_indices_dict)
+
+
 def run(data_dir, output_path):
     # Create output directory
     if not os.path.exists(output_path):
@@ -139,30 +149,45 @@ def run(data_dir, output_path):
         os.makedirs(output_path)
     print("Output directory created at", output_path)
 
-    if 'suite2p' in data_dir:
-        tiff_dict_suite2p, aData_dict_suite2p = read_tiff_h5_aData(data_dir, 'h5')
-        motion_total_suite2p_dict = compute_euclidean_norm(aData_dict_suite2p)
-        top_5_indices_dict_suite2p = compute_percentiles(motion_total_suite2p_dict)
-        print('Done suite2p')
+    folder_names = {
+    'suite2p': 'h5',
+    'caiman_stripCaiman': 'h5',
+    'stripRegisteration_matlab': 'mat',
+    'stripRegisteration': 'h5'
+    }
 
-    if 'caiman_stripCaiman' in data_dir:
-        tiff_dict_caiman, aData_dict_caiman = read_tiff_h5_aData(data_dir, 'h5')
-        motion_total_caiman_dict = compute_euclidean_norm(aData_dict_caiman)
-        top_5_indices_dict_caiman = compute_percentiles(motion_total_caiman_dict)
-        print('Done caiman')
 
-    if 'stripRegisteration_matlab' in data_dir:
-        tiff_dict_strip_matlab, aData_dict_strip_matlab = read_tiff_h5_aData(data_dir, 'mat')
-        # motion_total_strip_matlab_dict = compute_euclidean_norm(aData_dict_strip_matlab)
-        # top_5_indices_dict_strip_matlab = compute_percentiles(motion_total_strip_matlab_dict)
-        # print(top_5_indices_dict_strip_matlab)
-        # print('Done matlab')
+    # Use glob to find directories matching the names
+    found_folders = [os.path.basename(x) for x in glob.glob(os.path.join(data_dir, '*')) if os.path.isdir(x)]
+    print(found_folders)
+    for folder, ext in folder_names.items():
+        if folder in found_folders:
+            process_folder(data_dir, folder, ext)
+            
 
-    if 'stripRegisteration' in data_dir:
-        tiff_dict_strip, aData_dict_strip = read_tiff_h5_aData(data_dir, 'h5')
-        motion_total_strip_dict = compute_euclidean_norm(aData_dict_strip)
-        top_5_indices_dict_strip = compute_percentiles(motion_total_strip_dict)
-        print('Done StripRegisteration')
+    # if 'suite2p' in data_dir:
+    #     tiff_dict_suite2p, aData_dict_suite2p = read_tiff_h5_aData(data_dir, 'h5')
+    #     motion_total_suite2p_dict = compute_euclidean_norm(aData_dict_suite2p)
+    #     top_5_indices_dict_suite2p = compute_percentiles(motion_total_suite2p_dict)
+    #     print('Done suite2p')
+
+    # if 'caiman_stripCaiman' in data_dir:
+    #     tiff_dict_caiman, aData_dict_caiman = read_tiff_h5_aData(data_dir, 'h5')
+    #     motion_total_caiman_dict = compute_euclidean_norm(aData_dict_caiman)
+    #     top_5_indices_dict_caiman = compute_percentiles(motion_total_caiman_dict)
+    #     print('Done caiman')
+
+    # if 'stripRegisteration_matlab' in data_dir:
+    #     tiff_dict_strip_matlab, aData_dict_strip_matlab = read_tiff_h5_aData(data_dir, 'mat')
+    #     motion_total_strip_matlab_dict = compute_euclidean_norm(aData_dict_strip_matlab)
+    #     top_5_indices_dict_strip_matlab = compute_percentiles(motion_total_strip_matlab_dict)
+    #     print('Done matlab')
+
+    # if 'stripRegisteration' in data_dir:
+    #     tiff_dict_strip, aData_dict_strip = read_tiff_h5_aData(data_dir, 'h5')
+    #     motion_total_strip_dict = compute_euclidean_norm(aData_dict_strip)
+    #     top_5_indices_dict_strip = compute_percentiles(motion_total_strip_dict)
+    #     print('Done StripRegisteration')
 
 
 
@@ -191,3 +216,7 @@ if __name__ == "__main__":
     # Assign the parsed arguments to params dictionary
 
     run(args.input, args.output)
+
+
+
+
