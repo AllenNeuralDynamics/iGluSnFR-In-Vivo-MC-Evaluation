@@ -59,8 +59,8 @@ def process_alignment_data(file_path, file_type):
             structured_array = mat_contents[data_key]
 
             # Extract motionC and motionR
-            motion_c_data = structured_array['motionC'][0, 0].ravel()
-            motion_r_data = structured_array['motionR'][0, 0].ravel()
+            motion_c_data = structured_array['motionC'][0, 0].ravel()[:]
+            motion_r_data = structured_array['motionR'][0, 0].ravel()[:]
 
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
@@ -69,7 +69,7 @@ def process_alignment_data(file_path, file_type):
 
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
-        return (None, None if file_type == 'h5' else None)
+        return (None, None if file_type == 'h5' or 'mat' else None)
 
 
 def read_tiff_h5_aData(data_dir, file_type):
@@ -91,27 +91,46 @@ def read_tiff_h5_aData(data_dir, file_type):
                         tiff_dict[int(folder)] = tiff_data
                     if file.endswith('.h5'):
                         h5_path = os.path.join(folder_path, file)
-                        aData_dict[int(folder)] = process_alignment_data(h5_path, file_type) # Get aData from .h5 or mat file
+                        aData_dict[int(folder)] = process_alignment_data(h5_path, file_type) # Get aData from .h5 file
+                    if file.endswith('_ALIGNMENTDATA.mat'):
+                        mat_path = os.path.join(folder_path, file)
+                        aData_dict[int(folder)] = process_alignment_data(mat_path, file_type) # Get aData from mat file
     return tiff_dict, aData_dict
 
 def compute_euclidean_norm(data_dict):
+    # print('[DEBUG]:', data_dict.items())
     # Initialize the output dictionary
     result_dict = {}
-
     # Iterate through each folder in the dictionary
-    for folder_index, data in data_dict.items():
-        print('folder_index', folder_index)
-        # Extract motion_c_data and motion_r_data
-        motion_c = data[0]
-        motion_r = data[1]
-        
+    for folder_index, (motion_c_data, motion_r_data) in data_dict.items():
         # Compute the desired formula for each element
-        result = np.sqrt((np.abs(motion_c) / 128)**2 + (np.abs(motion_r) / 50)**2) # MotionC and MotionR is combined to single array
-        
+        result = np.sqrt((np.abs(motion_c_data) / 128)**2 + (np.abs(motion_r_data) / 50)**2) # MotionC and MotionR is combined to single array        
         # Store the result in the output dictionary
-        result_dict[folder_index] = result
+        result_dict[folder_index] = result    
+    # Return the final result dictionary after processing all items
+    return result_dict
 
-        return result_dict
+def compute_percentiles(combined_motion_dict):
+    # Initialize dictionaries to store results
+    top_5_values_dict = {}
+    top_5_indices_dict = {}
+    
+    # Process each folder
+    for folder_index, motion_total in combined_motion_dict.items():
+        # Compute the 95th percentile
+        top_5_percentile = np.percentile(motion_total, 95)
+        
+        # Extract values above or equal to the 95th percentile
+        top_5_values = motion_total[motion_total >= top_5_percentile]
+        
+        # Extract indices of values above or equal to the 95th percentile
+        top_5_indices = np.argwhere(motion_total >= top_5_percentile)
+        
+        # Store results in dictionaries
+        top_5_values_dict[folder_index] = top_5_values
+        top_5_indices_dict[folder_index] = top_5_indices
+            
+    return top_5_indices_dict
 
 def run(data_dir, output_path):
     # Create output directory
@@ -122,23 +141,28 @@ def run(data_dir, output_path):
 
     if 'suite2p' in data_dir:
         tiff_dict_suite2p, aData_dict_suite2p = read_tiff_h5_aData(data_dir, 'h5')
-        print(aData_dict_suite2p.items())
-        # Compute the Eucliedian Norm
         motion_total_suite2p_dict = compute_euclidean_norm(aData_dict_suite2p)
-        print(motion_total_suite2p_dict)
+        top_5_indices_dict_suite2p = compute_percentiles(motion_total_suite2p_dict)
         print('Done suite2p')
 
-    # if 'caiman_stripCaiman' in data_dir:
-    #     tiff_dict_caiman, aData_dict_caiman = read_tiff_h5_aData(data_dir, 'h5')
-    #     print('Done caiman')
+    if 'caiman_stripCaiman' in data_dir:
+        tiff_dict_caiman, aData_dict_caiman = read_tiff_h5_aData(data_dir, 'h5')
+        motion_total_caiman_dict = compute_euclidean_norm(aData_dict_caiman)
+        top_5_indices_dict_caiman = compute_percentiles(motion_total_caiman_dict)
+        print('Done caiman')
 
-    # if 'stripRegisteration_matlab' in data_dir:
-    #     tiff_dict_strip_matlab, aData_dict_strip_matlab = read_tiff_h5_aData(data_dir, 'mat')
-    #     print('Done matlab')
+    if 'stripRegisteration_matlab' in data_dir:
+        tiff_dict_strip_matlab, aData_dict_strip_matlab = read_tiff_h5_aData(data_dir, 'mat')
+        # motion_total_strip_matlab_dict = compute_euclidean_norm(aData_dict_strip_matlab)
+        # top_5_indices_dict_strip_matlab = compute_percentiles(motion_total_strip_matlab_dict)
+        # print(top_5_indices_dict_strip_matlab)
+        # print('Done matlab')
 
-    # if 'stripRegisteration' in data_dir:
-    #     tiff_dict_strip, aData_dict_strip = read_tiff_h5_aData(data_dir, 'h5')
-    #     print('Done stripRegisteration')
+    if 'stripRegisteration' in data_dir:
+        tiff_dict_strip, aData_dict_strip = read_tiff_h5_aData(data_dir, 'h5')
+        motion_total_strip_dict = compute_euclidean_norm(aData_dict_strip)
+        top_5_indices_dict_strip = compute_percentiles(motion_total_strip_dict)
+        print('Done StripRegisteration')
 
 
 
