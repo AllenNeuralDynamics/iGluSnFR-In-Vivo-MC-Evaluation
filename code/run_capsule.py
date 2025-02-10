@@ -161,16 +161,30 @@ def run(data_dir, output_path):
 
     methods_indices = {}
     key_counter = 1
+    
     for folder, ext in folder_names.items():
         if folder in found_folders:
            methods_indices[key_counter] = process_folder(data_dir, folder, ext)
            key_counter += 1
 
-    # TODO: concatenate all methods_indices
+    # Flatten nested indices
+    all_indices = []
+    for indices_dict in methods_indices.values():
+        if isinstance(indices_dict, dict):
+            # Flatten individual method indices
+            for indices in indices_dict.values():
+                all_indices.extend(indices)  # Add individual elements
+        else:
+            print(f"Warning: Expected dict but got {type(indices_dict)}")
+
+    # Now works with homogeneous array
+    unique_indices, counts = np.unique(all_indices, return_counts=True)
+
+    
     # TODO: get unique indices as list accross all registeration methods 
     # TODO: Keep track of the movies as well
-    
-    print('methods_indices', methods_indices.keys())
+
+    print('all_indices', unique_indices)
             
 
 if __name__ == "__main__":
