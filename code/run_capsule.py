@@ -72,31 +72,52 @@ def process_alignment_data(file_path, file_type):
         print(f"Error reading {file_path}: {e}")
         return (None, None if file_type == 'h5' or 'mat' else None)
 
-
 def read_tiff_h5_aData(data_dir, file_type):
-    # Initialize an empty dictionary to store TIFF data
+    """
+    Reads TIFF files and alignment data from a directory structure.
+
+    Args:
+        data_dir (str): Path to the main directory containing subfolders.
+        file_type (str): File type for alignment data processing ('h5' or 'mat').
+
+    Returns:
+        tuple: A tuple containing two dictionaries:
+            - tiff_dict (dict): Dictionary of TIFF data, with folder number as keys.
+            - aData_dict (dict): Dictionary of alignment data, with folder number as keys.
+    """
+
     tiff_dict = {}
     aData_dict = {}
-    # Iterate through numerical subfolders
+
     for folder in sorted(os.listdir(data_dir)):
-        if folder.isdigit():  # Ensure the folder name is numeric
-            folder_path = os.path.join(data_dir, folder)
-            if os.path.isdir(folder_path):  # Check if it is a directory
-                # Find TIFF files in the folder
-                for file in os.listdir(folder_path):
-                    if file.endswith('.tif') or file.endswith('.tiff'):  # Check for TIFF file extensions
-                        tiff_path = os.path.join(folder_path, file)
-                        # Read the TIFF file
-                        tiff_data = imread(tiff_path)
-                        # Append to dictionary with key as folder number
-                        tiff_dict[int(folder)] = tiff_data
-                    if file.endswith('.h5'):
-                        h5_path = os.path.join(folder_path, file)
-                        aData_dict[int(folder)] = process_alignment_data(h5_path, file_type) # Get aData from .h5 file
-                    if file.endswith('_ALIGNMENTDATA.mat'):
-                        mat_path = os.path.join(folder_path, file)
-                        aData_dict[int(folder)] = process_alignment_data(mat_path, file_type) # Get aData from mat file
+        if not folder.isdigit():  # Skip non-numeric folders immediately
+            continue
+
+        folder_path = os.path.join(data_dir, folder)
+        if not os.path.isdir(folder_path):  # Ensure it's a directory
+            continue
+
+        folder_num = int(folder)  # Convert folder name to integer for dictionary keys
+
+        for file in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, file)  # Full path to the file
+
+            if file.endswith(('.tif', '.tiff')):  # Check for TIFF files
+                if "DOWNSAMPLED" in file or "suite2p" in folder_path.lower() or "caiman" in folder_path.lower():
+                    try:
+                        tiff_data = imread(file_path)
+                        # print('tiff_data:', folder, tiff_data.shape)
+                        tiff_dict[folder_num] = tiff_data
+                    except Exception as e:
+                        print(f"Error reading TIFF file {file_path}: {e}")
+
+            elif file.endswith('.h5'):
+                aData_dict[folder_num] = process_alignment_data(file_path, file_type)
+            elif file.endswith('_ALIGNMENTDATA.mat'):
+                aData_dict[folder_num] = process_alignment_data(file_path, file_type)
+
     return tiff_dict, aData_dict
+
 
 def compute_euclidean_norm(data_dict):
     # print('[DEBUG]:', data_dict.items())
@@ -139,8 +160,7 @@ def process_folder(data_dir, folder_name, file_extension):
         top_5_indices_dict = compute_percentiles(motion_total_dict) #3. Get the top 5% with the highest motion
         
         print(f'Done {folder_name}')
-        return top_5_indices_dict
-
+        return top_5_indices_dict, tiff_dict
 
 def run(data_dir, output_path):
     # Create output directory
@@ -160,12 +180,12 @@ def run(data_dir, output_path):
     found_folders = [os.path.basename(x) for x in glob.glob(os.path.join(data_dir, '*')) if os.path.isdir(x)]
 
     methods_indices = {}
-    key_counter = 1
+    tiff_indices = {}
     
     for folder, ext in folder_names.items():
         if folder in found_folders:
-           methods_indices[key_counter] = process_folder(data_dir, folder, ext)
-           key_counter += 1
+            folder_path = os.path.join(data_dir, folder)
+            methods_indices[folder], tiff_indices[folder]  = process_folder(data_dir, folder, ext)
 
     # Flatten nested indices
     all_indices = []
@@ -180,11 +200,20 @@ def run(data_dir, output_path):
     # Now works with homogeneous array
     unique_indices, counts = np.unique(all_indices, return_counts=True)
 
-    
-    # TODO: get unique indices as list accross all registeration methods 
-    # TODO: Keep track of the movies as well
+    # tiff_indices contains 1st methods used for registration. Each methods contains the registered movie. 
+    # If 3 methods are used (Suite2p, caiman, Strip). Suite2p contains eg 9 registered movies. 
+    # print('tiff_indices', tiff_indices.shape)
+    mean_registered_movies = {}
+    frames_with_motion = {}
+    for folder, indices in tiff_indices.items():
+        mean_registered_movies[folder] = {}
+        frames_with_motion[folder] = {}
+        for index, tiff_array in indices.items():
+            # print(folder,index, tiff_array.shape)
+            mean_registered_movies[folder][index] = np.mean(tiff_array, axis=0)
+            frames_with_motion[folder][index] = tiff_array[unique_indices[index], :, :]
+    print(frames_with_motion)
 
-    print('all_indices', unique_indices)
             
 
 if __name__ == "__main__":
