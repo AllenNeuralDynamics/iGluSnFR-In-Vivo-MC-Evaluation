@@ -3,6 +3,7 @@ import argparse
 import json
 import glob
 import numpy as np
+import json
 import h5py
 import pandas as pd
 import concurrent.futures
@@ -159,8 +160,6 @@ def process_folder(data_dir, folder_name, file_extension):
         tiff_dict, aData_dict = read_tiff_h5_aData(folder_path, file_extension) # 1. Extract tiff and alignment data (motionC and motionR)
         motion_total_dict = compute_euclidean_norm(aData_dict) #2. Combine motionC and motionR by  normalized Euclidean norm by computing the magnitude of a vector with the two components
         top_5_indices_dict = compute_percentiles(motion_total_dict) #3. Get the top 5% with the highest motion
-        
-        print(f'Done {folder_name}')
         return top_5_indices_dict, tiff_dict
 
 def copy_folder_structure(src, dst, folder_names):
@@ -239,11 +238,40 @@ def run(data_dir, output_path):
     for folder, indices in frames_with_motion.items():
         correlation_results[folder] = {}
         for index, frames in indices.items():
-            core_temp = pearsonr(
-                np.nan_to_num(mean_registered_movies[folder][index].flatten(), nan=0.0), np.nan_to_num(frames.flatten(), nan=0.0)
+            # Compute Pearson correlation between flattened arrays after replacing nan's
+            core_temp,_ = pearsonr(
+                np.nan_to_num(mean_registered_movies[folder][index].flatten(), nan=0.0),
+                np.nan_to_num(frames.flatten(), nan=0.0)
             )
-            correlation_results[folder][index] =  np.mean(core_temp)    
-    print(correlation_results)
+            # Store the mean value of core_temp (the correlation coefficient and p-value) in your results
+            correlation_results[folder][index] = np.mean(core_temp)
+
+            # Construct the directory for this folder and index
+            save_dir = os.path.join(output_path, folder, str(index))
+            os.makedirs(save_dir, exist_ok=True)
+
+            # Plot the histogram for the flattened frame data
+            plt.figure()
+            plt.hist(np.nan_to_num(frames.flatten(), nan=0.0), bins=50)
+            plt.title(f'Histogram - Folder: {folder}, Index: {index}')
+            plt.xlabel('Intensity')
+            plt.ylabel('Frequency')
+            # Save the histogram to the designated file path
+            histogram_file = os.path.join(save_dir, 'histogram.png')
+            plt.savefig(histogram_file)
+            plt.close()
+
+            # Save the core_temp values as JSON; core_temp is a tuple so it will be stored as a list in JSON
+            core_temp_file = os.path.join(save_dir, 'core_temp.json')
+            with open(core_temp_file, 'w') as f:
+                json.dump(core_temp, f)
+
+            # Save the correlation_results dictionary as JSON within the same folder.
+            # Here we write the full correlation_results dict; if you prefer only the latest folder's data,
+            # you could dump correlation_results[folder] instead.
+            corr_results_file = os.path.join(save_dir, 'correlation_results.json')
+            with open(corr_results_file, 'w') as f:
+                json.dump(correlation_results, f)
 
 if __name__ == "__main__":
     # Create argument parser
