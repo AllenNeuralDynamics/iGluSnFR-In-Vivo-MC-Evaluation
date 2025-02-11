@@ -9,6 +9,7 @@ import concurrent.futures
 import scipy.io as sio
 from tifffile import imread
 import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
 import scipy.io as sio
 
 # Common function to process .h5 and .mat files
@@ -162,12 +163,29 @@ def process_folder(data_dir, folder_name, file_extension):
         print(f'Done {folder_name}')
         return top_5_indices_dict, tiff_dict
 
+def copy_folder_structure(src, dst, folder_names):
+    # Validate which folders contain at least one file of the specified type
+    valid_folders = set()
+    for folder, ext in folder_names.items():
+        folder_path = os.path.join(src, folder)
+        if not os.path.isdir(folder_path):
+            continue
+        ext = f".{ext}" if not ext.startswith('.') else ext
+        if any(f.endswith(ext) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))):
+            valid_folders.add(folder)
+    
+    # Copy directory structure for valid folders and their subdirectories
+    for root, dirs, files in os.walk(src):
+        rel_path = os.path.relpath(root, src)
+        if any(rel_path.startswith(folder) for folder in valid_folders):
+            dest_dir = os.path.join(dst, rel_path)
+            os.makedirs(dest_dir, exist_ok=True)
+
 def run(data_dir, output_path):
     # Create output directory
-    if not os.path.exists(output_path):
-        print("Creating output directory...")
-        os.makedirs(output_path)
-    print("Output directory created at", output_path)
+    # if not os.path.exists(output_path):
+    #     print("Creating output directory...")
+    #     os.makedirs(output_path)
 
     folder_names = {
     'suite2p': 'h5',
@@ -175,6 +193,10 @@ def run(data_dir, output_path):
     'stripRegisteration_matlab': 'mat',
     'stripRegisteration': 'h5'
     }
+
+    # Copy folder structure from input to output
+    copy_folder_structure(data_dir, output_path, folder_names)
+    print("Folder structure copied to output directory.")
 
     # Use glob to find directories matching the names
     found_folders = [os.path.basename(x) for x in glob.glob(os.path.join(data_dir, '*')) if os.path.isdir(x)]
@@ -185,6 +207,7 @@ def run(data_dir, output_path):
     for folder, ext in folder_names.items():
         if folder in found_folders:
             folder_path = os.path.join(data_dir, folder)
+            print('folder_path', folder_path)
             methods_indices[folder], tiff_indices[folder]  = process_folder(data_dir, folder, ext)
 
     # Flatten nested indices
@@ -200,9 +223,7 @@ def run(data_dir, output_path):
     # Now works with homogeneous array
     unique_indices, counts = np.unique(all_indices, return_counts=True)
 
-    # tiff_indices contains 1st methods used for registration. Each methods contains the registered movie. 
-    # If 3 methods are used (Suite2p, caiman, Strip). Suite2p contains eg 9 registered movies. 
-    # print('tiff_indices', tiff_indices.shape)
+    # Compute mean and get frames with highest motion for each registered movie of each method
     mean_registered_movies = {}
     frames_with_motion = {}
     for folder, indices in tiff_indices.items():
@@ -210,11 +231,19 @@ def run(data_dir, output_path):
         frames_with_motion[folder] = {}
         for index, tiff_array in indices.items():
             # print(folder,index, tiff_array.shape)
-            mean_registered_movies[folder][index] = np.mean(tiff_array, axis=0)
+            mean_registered_movies[folder][index] = np.nanmean(tiff_array, axis=0)
             frames_with_motion[folder][index] = tiff_array[unique_indices[index], :, :]
-    print(frames_with_motion)
 
-            
+    # Compute correlation between mean registered movies and frames with motion using Pearson correlation
+    correlation_results = {}
+    for folder, indices in frames_with_motion.items():
+        correlation_results[folder] = {}
+        for index, frames in indices.items():
+            core_temp = pearsonr(
+                np.nan_to_num(mean_registered_movies[folder][index].flatten(), nan=0.0), np.nan_to_num(frames.flatten(), nan=0.0)
+            )
+            correlation_results[folder][index] =  np.mean(core_temp)    
+    print(correlation_results)
 
 if __name__ == "__main__":
     # Create argument parser
