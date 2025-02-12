@@ -8,6 +8,10 @@
 		{
 			"id": "81fce0e1-343a-4271-817c-b5562b037864",
 			"mount": "iGluSnFR_simulations_default_12"
+		},
+		{
+			"id": "8fc4aa52-e558-401a-a152-b8af31e2003e",
+			"mount": "iGluSnFR-Sim-Data-900_1xDS_Registered"
 		}
 	]
 }

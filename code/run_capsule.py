@@ -190,7 +190,7 @@ def run(data_dir, output_path):
     'suite2p': 'h5',
     'caiman_stripCaiman': 'h5',
     'stripRegisteration_matlab': 'mat',
-    # 'stripRegisteration': 'h5'
+    'stripRegisteration': 'h5'
     }
 
     # Copy folder structure from input to output
