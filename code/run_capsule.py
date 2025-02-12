@@ -190,7 +190,7 @@ def run(data_dir, output_path):
     'suite2p': 'h5',
     'caiman_stripCaiman': 'h5',
     'stripRegisteration_matlab': 'mat',
-    'stripRegisteration': 'h5'
+    # 'stripRegisteration': 'h5'
     }
 
     # Copy folder structure from input to output
@@ -206,21 +206,27 @@ def run(data_dir, output_path):
     for folder, ext in folder_names.items():
         if folder in found_folders:
             folder_path = os.path.join(data_dir, folder)
-            print('folder_path', folder_path)
             methods_indices[folder], tiff_indices[folder]  = process_folder(data_dir, folder, ext)
 
-    # Flatten nested indices
-    all_indices = []
-    for indices_dict in methods_indices.values():
+    # Group indices by their tif folder id
+    all_indices = {}
+    for method_name, indices_dict in methods_indices.items():
         if isinstance(indices_dict, dict):
-            # Flatten individual method indices
-            for indices in indices_dict.values():
-                all_indices.extend(indices)  # Add individual elements
+            for label, value in indices_dict.items():
+                if label not in all_indices:
+                    all_indices[label] = []
+                all_indices[label].append(value)
         else:
             print(f"Warning: Expected dict but got {type(indices_dict)}")
 
-    # Now works with homogeneous array
-    unique_indices, counts = np.unique(all_indices, return_counts=True)
+    # Get unique indices for each movie across different registeration methods
+    # Extract unique values for each group
+    unique_indices = {}
+    for key, values in all_indices.items():
+        merged_array = [int(item) for sublist in values for item in sublist]
+        unique_indices[key] = list(np.unique(merged_array))
+
+    unique_values = {key: [int(value) for value in values] for key, values in unique_indices.items()}
 
     # Compute mean and get frames with highest motion for each registered movie of each method
     mean_registered_movies = {}
@@ -232,19 +238,27 @@ def run(data_dir, output_path):
             # print(folder,index, tiff_array.shape)
             mean_registered_movies[folder][index] = np.nanmean(tiff_array, axis=0)
             frames_with_motion[folder][index] = tiff_array[unique_indices[index], :, :]
+            # print('tiff_array[unique_indices[index], :, :]', tiff_array[unique_indices[index], :, :].shape)
 
     # Compute correlation between mean registered movies and frames with motion using Pearson correlation
     correlation_results = {}
     for folder, indices in frames_with_motion.items():
+
         correlation_results[folder] = {}
+        correlation_values = []
+
         for index, frames in indices.items():
             # Compute Pearson correlation between flattened arrays after replacing nan's
-            core_temp,_ = pearsonr(
-                np.nan_to_num(mean_registered_movies[folder][index].flatten(), nan=0.0),
-                np.nan_to_num(frames.flatten(), nan=0.0)
-            )
-            # Store the mean value of core_temp (the correlation coefficient and p-value) in your results
-            correlation_results[folder][index] = np.mean(core_temp)
+            for frame in frames:  # Iterate through 616 frames
+                correl_temp, _ = pearsonr(
+                     np.nan_to_num(mean_registered_movies[folder][index].flatten(), nan=0.0),
+                     np.nan_to_num(frame.flatten(), nan=0.0)
+                )
+                correlation_values.append(correl_temp)
+
+            # print('Correlation values for', folder, ':', len(correlation_values), '\n')
+            # Store the mean value of correl_temp (the correlation coefficient and p-value) in your results
+            correlation_results[folder][index] = np.mean(correlation_values)
 
             # Construct the directory for this folder and index
             save_dir = os.path.join(output_path, folder, str(index))
@@ -252,8 +266,8 @@ def run(data_dir, output_path):
 
             # Plot the histogram for the flattened frame data
             plt.figure()
-            plt.hist(np.nan_to_num(frames.flatten(), nan=0.0), bins=50)
-            plt.title(f'Histogram - Folder: {folder}, Index: {index}')
+            plt.hist(correlation_values, bins=50, edgecolor='black')
+            plt.title(f'Histogram - Method: {folder}, Simulation: {index}')
             plt.xlabel('Intensity')
             plt.ylabel('Frequency')
             # Save the histogram to the designated file path
@@ -261,10 +275,10 @@ def run(data_dir, output_path):
             plt.savefig(histogram_file)
             plt.close()
 
-            # Save the core_temp values as JSON; core_temp is a tuple so it will be stored as a list in JSON
-            core_temp_file = os.path.join(save_dir, 'core_temp.json')
-            with open(core_temp_file, 'w') as f:
-                json.dump(core_temp, f)
+            # Save the correl_temp values as JSON; correl_temp is a tuple so it will be stored as a list in JSON
+            correl_temp_file = os.path.join(save_dir, 'correlation.json')
+            with open(correl_temp_file, 'w') as f:
+                json.dump(correlation_values, f)
 
             # Save the correlation_results dictionary as JSON within the same folder.
             # Here we write the full correlation_results dict; if you prefer only the latest folder's data,
