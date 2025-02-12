@@ -242,9 +242,11 @@ def run(data_dir, output_path):
 
     # Compute correlation between mean registered movies and frames with motion using Pearson correlation
     correlation_results = {}
+    correlation_across_methods = {}
     for folder, indices in frames_with_motion.items():
 
         correlation_results[folder] = {}
+        correlation_across_methods[folder] = {}
         correlation_values = []
 
         for index, frames in indices.items():
@@ -286,6 +288,24 @@ def run(data_dir, output_path):
             corr_results_file = os.path.join(save_dir, 'correlation_results.json')
             with open(corr_results_file, 'w') as f:
                 json.dump(correlation_results, f)
+                
+            correlation_across_methods[folder] = correlation_values
+
+        # Plot the histogram for the flattened frame data
+        plt.figure()
+        plt.hist(correlation_across_methods[folder], bins=50, edgecolor='black')
+        # have mean of correlation values as title
+        correlation_across_methods_mean = np.mean(correlation_across_methods[folder])
+        plt.title(f'Histogram - Method: {folder}, Mean: {correlation_across_methods_mean:.2f}')
+        plt.xlabel('Intensity')
+        plt.ylabel('Frequency')
+        # Save the histogram to the designated file path
+        histogram_file = os.path.join(output_path+folder, 'histogram.png')
+        plt.savefig(histogram_file)
+        plt.close()
+
+
+        
 
 if __name__ == "__main__":
     # Create argument parser
