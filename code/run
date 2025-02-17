@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -ex
 
-python -u run_capsule.py -i ../data/iGluSnFR-Sim-Data-900_1xDS_Registered/ -o ../results/
+python -u run_capsule.py -i ../data/iGluSnFR_simulations_default_12_registered/ -o ../results/
