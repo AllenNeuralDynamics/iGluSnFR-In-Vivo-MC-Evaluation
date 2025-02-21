@@ -1,4 +1,5 @@
 import os
+import re
 import argparse
 import json
 import glob
@@ -119,10 +120,11 @@ def process_movie_batch(data_dir, folder_names, batch_size=5):
     for method in folder_names:
         method_path = os.path.join(data_dir, method)
         if os.path.exists(method_path):
-            indices = [d for d in os.listdir(method_path) if d.isdigit()]
+            indices = [d for d in os.listdir(method_path) if re.match(r'^\d+(_\d+)?$', d)]
+            print(indices)
             for idx in indices:
-                index_map[int(idx)].append(method)
-
+                index_map[idx].append(method)
+    # print(index_map)
     # Process in batches
     current_batch = []
     for idx, methods in index_map.items():
@@ -136,7 +138,7 @@ def process_movie_batch(data_dir, folder_names, batch_size=5):
             if os.path.exists(method_path):
                 batch_entry['methods'].append(method)
         current_batch.append(batch_entry)
-    
+
     if current_batch:
         yield current_batch
 
@@ -175,18 +177,22 @@ def process_single_movie(data_dir, method, idx):
     # Memory-efficient TIFF reading
     with tifffile.TiffFile(tiff_path) as tif:
         num_frames = len(tif.pages)
-        mean_frame = np.zeros(tif.pages[0].shape, dtype=np.float32)
-        
-        # Compute mean frame
+        frame_shape = tif.pages[0].shape
+        all_frames = np.zeros((num_frames, *frame_shape), dtype=np.float32)
+ 
+        # Load frames into an array
         for i, page in enumerate(tif.pages):
-            mean_frame += page.asarray().astype(np.float32) / num_frames #TODO: MX is this okay? Better than taking NaN mean?
-
+            all_frames[i] = page.asarray().astype(np.float32)
+ 
+        # Compute mean frame using nanmean
+        mean_frame = np.nanmean(all_frames, axis=0)
+ 
         # Get high-motion frames
         high_motion_frames = []
         for i in top_indices:
             if i < num_frames:
                 high_motion_frames.append(tif.pages[i].asarray())
-
+ 
     return {
         'method': method,
         'index': idx,
@@ -196,22 +202,26 @@ def process_single_movie(data_dir, method, idx):
     }
 
 def copy_folder_structure(src, dst, folder_names):
-    # Validate which folders contain at least one file of the specified type
     valid_folders = set()
     for folder, ext in folder_names.items():
         folder_path = os.path.join(src, folder)
         if not os.path.isdir(folder_path):
             continue
         ext = f".{ext}" if not ext.startswith('.') else ext
-        if any(f.endswith(ext) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))):
-            valid_folders.add(folder)
+        # Recursively check for files with the extension
+        for root, _, files in os.walk(folder_path):
+            if any(f.endswith(ext) for f in files):
+                valid_folders.add(folder)
+                break
     
-    # Copy directory structure for valid folders and their subdirectories
+    # Replicate directory structure for valid folders
     for root, dirs, files in os.walk(src):
-        rel_path = os.path.relpath(root, src)
-        if any(rel_path.startswith(folder) for folder in valid_folders):
-            dest_dir = os.path.join(dst, rel_path)
-            os.makedirs(dest_dir, exist_ok=True)
+        current_dir = os.path.relpath(root, src)
+        for valid_folder in valid_folders:
+            if current_dir == valid_folder or current_dir.startswith(valid_folder + os.sep):
+                dest_dir = os.path.join(dst, current_dir)
+                os.makedirs(dest_dir, exist_ok=True)
+                break
 
 def run(data_dir, output_path):
     folder_names = {
@@ -231,6 +241,7 @@ def run(data_dir, output_path):
     batch_gen = process_movie_batch(data_dir, folder_names)
     
     for batch in batch_gen:
+        print(batch)
         with concurrent.futures.ProcessPoolExecutor() as executor:
             futures = []
             for movie in batch:

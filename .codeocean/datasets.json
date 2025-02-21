@@ -4,6 +4,14 @@
 		{
 			"id": "6522639b-9571-4fa6-af9a-4c2835ae6db9",
 			"mount": "iGluSnFR_simulations_default_12_registered"
+		},
+		{
+			"id": "9dbcf65b-af41-4ace-826c-44dba5c5033e",
+			"mount": "iGluSnFR_simulations_900_registered_1xDS"
+		},
+		{
+			"id": "a0acd685-96c6-4488-8a62-eb89b33f2d9c",
+			"mount": "iGluSnFR4f_dendrite_passiveDriftingGratings_registered_1xDS"
 		}
 	]
 }

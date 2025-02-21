@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -ex
 
-python -u run_capsule.py -i ../data/iGluSnFR_simulations_default_12_registered/ -o ../results/
+python -u run_capsule.py -i ../data/iGluSnFR4f_dendrite_passiveDriftingGratings_registered_1xDS/ -o ../results/
