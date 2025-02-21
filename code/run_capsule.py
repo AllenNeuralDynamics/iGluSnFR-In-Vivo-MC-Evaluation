@@ -15,9 +15,10 @@ import tifffile
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
 import scipy.io as sio
+import warnings
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 
 def compute_euclidean_norm(data_dict):
-    # print('[DEBUG]:', data_dict.items())
     # Initialize the output dictionary
     result_dict = {}
     # Iterate through each folder in the dictionary
@@ -124,7 +125,7 @@ def process_movie_batch(data_dir, folder_names, batch_size=5):
             print(indices)
             for idx in indices:
                 index_map[idx].append(method)
-    # print(index_map)
+
     # Process in batches
     current_batch = []
     for idx, methods in index_map.items():
@@ -241,7 +242,6 @@ def run(data_dir, output_path):
     batch_gen = process_movie_batch(data_dir, folder_names)
     
     for batch in batch_gen:
-        print(batch)
         with concurrent.futures.ProcessPoolExecutor() as executor:
             futures = []
             for movie in batch:
