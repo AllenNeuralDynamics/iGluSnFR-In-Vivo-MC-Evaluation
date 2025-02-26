@@ -168,9 +168,13 @@ def process_single_movie(data_dir, method, idx):
     # 3. Load and process TIFF data in chunks
     tiff_path = None
     for f in os.listdir(folder_path):
-        if f.endswith(('.tif', '.tiff')):
+        if method == "stripRegisteration" and f.endswith("_DOWNSAMPLED-1x.tif"): # Make shift code for now
             tiff_path = os.path.join(folder_path, f)
             break
+        elif f.endswith(('.tif', '.tiff')) and method != "stripRegisteration":
+            tiff_path = os.path.join(folder_path, f)
+            break
+
 
     if not tiff_path:
         return None
@@ -332,7 +336,3 @@ if __name__ == "__main__":
     # Assign the parsed arguments to params dictionary
 
     run(args.input, args.output)
-
-
-
-
