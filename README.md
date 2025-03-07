@@ -31,6 +31,10 @@ output_folder/
     └── ...
 ```
 
+# Output example:
+![image](https://github.com/user-attachments/assets/2247d442-7127-49d8-bb8b-e02f01f56476)
+
+
 # Flowchat:
 ```mermaid
 graph TD
