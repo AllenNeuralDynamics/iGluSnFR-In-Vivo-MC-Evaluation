@@ -38,22 +38,17 @@ graph TD
     B --> C[Replicate Folder Structure]
     C --> D[Process Movies in Batches]
     D --> E{For Each Movie}
-    E --> F[Extract Alignment Data<br>.h5/.mat for Each<br>Registration Method]
-    F --> G[Compute Euclidean Norm<br>Motion Metric for<br>Each Method]
-    G --> H[Identify Top 5%<br>High-Motion Frames<br>for Each Method]
-    H --> I[Take Union of High-Motion<br>Frames Across All Methods]
-    I --> J[Load TIFF Frames<br>Efficiently]
-    J --> K[Compute Mean Frame<br>for Each Method's Movie]
-    K --> L{For Each<br>Registration Method}
-    L --> M[Extract High-Motion Frames<br>Using Union Indices]
-    M --> N[Compute Pearson Correlation<br>Between Each High-Motion Frame<br>and Mean Frame]
-    N --> O[Save Correlation Data &<br>Generate Histogram Plots]
-    O --> P{More Methods?}
-    P -- Yes --> L
-    P -- No --> Q{More Movies?}
-    Q -- Yes --> E
-    Q -- No --> R[Generate Summary Histograms<br>& Statistics per Method]
-    R --> S[End]
-
-
+    E --> F[Read TIFF for<br>each method]
+    
+    F --> G1[Compute top 5%<br>motion indices for<br>each method. <br> Take union of indices <br> across all methods]
+    F --> G2[Compute mean<br>image for each<br>TIFF of each method]
+    
+    G1 --> H[Compute Pearson's<br>correlation for each method <br> with frames with highest <br> motion  & mean image for <br> that method.]
+    G2 --> H
+    
+    H --> I[Save Results]
+    I --> J{More Movies?}
+    J -- Yes --> E
+    J -- No --> K[Generate Summary<br>Statistics per Method]
+    K --> L[End]
 ```
