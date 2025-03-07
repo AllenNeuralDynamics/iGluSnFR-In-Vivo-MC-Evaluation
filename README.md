@@ -9,7 +9,7 @@ This capsule is designed to process and analyze motion data from in-vivo data re
 https://github.com/AllenNeuralDynamics/iGluSnFR-In-Vivo-MC-Evaluation/blob/26af0f18a0c6215a1784f4202ddff96a9d9467c6/code/run#L4
 
 > [!WARNING]
-> Based on the resources you have available, you may want to adjust `batch_size` under https://github.com/AllenNeuralDynamics/iGluSnFR-In-Vivo-MC-Evaluation/blob/26af0f18a0c6215a1784f4202ddff96a9d9467c6/code/run_capsule.py#L116
+> Based on the resources you have available, you may want to adjust `batch_size` under https://github.com/AllenNeuralDynamics/iGluSnFR-In-Vivo-MC-Evaluation/blob/26af0f18a0c6215a1784f4202ddff96a9d9467c6/code/run_capsule.py#L116 because in-vivo data can be large and loading many movies into memory can be computationally expensive. 
 
 - To skip any particular motion correction method, you can comment that one out:
 https://github.com/AllenNeuralDynamics/iGluSnFR-In-Vivo-MC-Evaluation/blob/26af0f18a0c6215a1784f4202ddff96a9d9467c6/code/run_capsule.py#L232-L237
