@@ -1,3 +1,2 @@
-# aind-capsule-template
+# iGluSnFR-In-Vivo-MC-Evaluation
 
-Basic structure of a capsule to be customized as needed.
